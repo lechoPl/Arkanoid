@@ -15,6 +15,8 @@ using namespace glm;
 
 using namespace std;
 
+CGame game;
+
 static void error_callback(int error, const char* description)
 {
 	fputs(description, stderr);
@@ -23,12 +25,21 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+		game.setMovePadleRight(true);
+	if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE)
+		game.setMovePadleRight(false);
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+		game.setMovePadleLeft(true);
+	if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE)
+		game.setMovePadleLeft(false);
 }
 
 int main(void)
 {
 	GLFWwindow* window;
-	CGame game;
 
 	if (!glfwInit())
 		return -1;
@@ -106,11 +117,30 @@ int main(void)
 
 		glUniform3f(ColorID, 0.3f, 0.3f, 0.3f);
 		glUniform2f(PositionID, 0.f, 0.f);
-		glUniform1f(ScaleID, 1.f);
+		glUniform2f(ScaleID, 1.f, 1.f);
 		objectsData.boardData.draw();
+
+		for (int i = 0; i < game.getBricks().size(); ++i)
+		{
+			const CBrick& tempBrick = game.getBricks().at(i);
+			if (tempBrick.isDestroyed())
+				continue;
+
+			glUniform3f(ColorID, 0.f, 1.f, 0.f);
+			glUniform2f(PositionID, tempBrick.getPos().x, tempBrick.getPos().y);
+			glUniform2f(ScaleID, tempBrick.getWidth() / 2, tempBrick.getHeight() / 2);
+			objectsData.brickData.draw();
+		}
+
+		//draw padle
+		glUniform3f(ColorID, 0.f, 0.f, 1.f);
+		glUniform2f(PositionID, game.getPadle().getPos().x, game.getPadle().getPos().y);
+		glUniform2f(ScaleID, game.getPadle().getWidth() / 2, game.getPadle().getHeight() / 2);
+		objectsData.padleData.draw();
 
 		glUniform3f(ColorID, 1.f, 0.f, 0.f);
 		glUniform2f(PositionID, game.getBall()->getPos().x, game.getBall()->getPos().y);
+		glUniform2f(ScaleID, 1.f, 1.f);
 		objectsData.ballData.draw();
 
 		glDisableVertexAttribArray(0);

@@ -1,117 +1,207 @@
 #include "gameObjects.h"
 
-/********************************
-			BOARD
-*********************************/
+const float CPadle::VELOCITY = 0.6f;
 
-CLine::CLine(glm::vec2 p1, glm::vec2 p2)
+void CBall::update(double dt)
 {
-	m_a = p1.y - p2.y;
-	m_b = p2.x - p1.x;
-	m_c = p1.x * p2.y - p2.x * p1.y;
+	glm::vec2 currentV = getVelocity();
+	currentV *= dt;
+
+	setPos(m_pos + currentV);
+
+	if (left() < -1.0f && m_velocity.x < 0) m_velocity.x *= -1;
+	if (right() > 1.0f  && m_velocity.x > 0) m_velocity.x *= -1;
+
+	if (top() > 1.0f && m_velocity.y > 0) m_velocity.y *= -1;
+	if (bottom() < -1.0f && m_velocity.y < 0) m_velocity.y *= -1;
 }
 
-bool CLine::getIntersectionPoint(const CLine& f, glm::vec2* p)
+bool CRectangle::isIntersecting(const CBall& ball)
 {
-	//TO DO: Check this!!!
-	if (m_a == f.m_a && m_b == f.m_b)
+	return right() >= ball.left() && left() <= ball.right()
+		&& bottom() <= ball.top() && top() >= ball.bottom();
+}
+
+
+void CBrick::testCollision(CBall& ball)
+{
+	if (isDestroyed())
+		return;
+
+	if (!isIntersecting(ball))
+		return;
+
+	this->destroy();
+
+	float overlapLeft = ball.right() - left();
+	float overlapRight = right() - ball.left();
+	float overlapTop = ball.bottom() - top();
+	float overlapBottom = bottom() - ball.top();
+
+	bool fromLeft = abs(overlapLeft) < abs(overlapRight);
+	bool fromTop = abs(overlapTop) < abs(overlapBottom);
+
+	float minOverlapX = fromLeft ? overlapLeft : overlapRight;
+	float minOverlapY = fromTop ? overlapTop : overlapBottom;
+
+	glm::vec2 v = ball.getVelocity();
+	if (abs(minOverlapX) < abs(minOverlapY))
+		v.x = fromLeft ? -abs(v.x) : abs(v.x);
+	else
+		v.y = fromTop ? abs(v.y) : -abs(v.y);
+
+
+	ball.setVelocity(v);
+}
+
+void CPadle::testCollision(CBall& ball)
+{
+	if (!isIntersecting(ball))
+		return;
+
+	float overlapLeft = ball.right() - left();
+	float overlapRight = right() - ball.left();
+	float overlapTop = ball.bottom() - top();
+	float overlapBottom = bottom() - ball.top();
+
+	bool fromLeft = abs(overlapLeft) < abs(overlapRight);
+	bool fromTop = abs(overlapTop) < abs(overlapBottom);
+
+	float minOverlapX = fromLeft ? overlapLeft : overlapRight;
+	float minOverlapY = fromTop ? overlapTop : overlapBottom;
+
+	glm::vec2 v = ball.getVelocity();
+	if (abs(minOverlapX) < abs(minOverlapY))
+		v.x = fromLeft ? -abs(v.x) : abs(v.x);
+	else if (fromTop)
 	{
-		// lines are perpendicular;
-		// ignore case when to line are the same line;
-		return false;
+		if (abs(minOverlapY) < m_width * 0.2)
+		{
+			float tempY = abs(v.y);
+			float temp = minOverlapY / m_width * 0.2;
+			float diff = tempY - tempY * temp;
+			v.y = tempY * temp;
+			v.x = v.x < 0 ? v.x - diff : v.x + diff;
+		}
+		else
+			v.y = abs(v.y);
+	}
+	else
+		v.y = -abs(v.y);
+
+
+	ball.setVelocity(v);
+}
+
+void CPadle::update(double dt)
+{
+	glm::vec2 currentV = getVelocity();
+	currentV *= dt;
+
+	setPos(m_pos + currentV);
+}
+
+SBoardCollisionDesc::~SBoardCollisionDesc()
+{
+	if (p1 != NULL)
+	{
+		delete p1;
+		p1 = NULL;
 	}
 
-	if (p == NULL)
-		p = new glm::vec2();
-
-	if (m_a == 0)
+	if (p2 != NULL)
 	{
-		//f1: By + C = 0 ==> y = -C/B
-		p->y = -m_c / m_b;
-
-		//f2: Ax + By + C = 0 ==> x = -(By + C)/A
-		p->x = -(f.m_b * p->y + f.m_c) / f.m_a;
+		delete p2;
+		p2 = NULL;
 	}
-	else if (m_b == 0)
-	{
-		//f1: Ax + C = 0 ==> x = -C/A
-		p->x = -m_c / m_a;
+}
 
-		//f2: Ax + By + C = 0 ==> y = -(Ax + C)/B
-		p->y = -(f.m_a * p->x + f.m_c) / f.m_b;
+void SBoardCollisionDesc::updateBallVelocity(CBall& ball)
+{
+	if (p1 == NULL)
+		return;
+	else if (p2 == NULL)
+	{
+		glm::vec2 v = ball.getVelocity();
+		v *= -1;
+		ball.setVelocity(v);
+		return;
 	}
 	else
 	{
-		p->y = (m_c * f.m_a - f.m_c * m_a) / (f.m_b * m_a - f.m_a * m_b);
-		p->x = -1 * (m_b * p->y + m_c) / m_a;
-	}
+		glm::vec2 temp = *p2 - *p1;
+		glm::vec2 n = glm::normalize(glm::vec2(-temp.y, temp.x));
 
-	return true;
+		glm::vec2 u = (glm::dot(ball.getVelocity(), n) / glm::dot(n, n))*n;
+		glm::vec2 w = ball.getVelocity() - u;
+
+		ball.setVelocity(w - u);
+	}
 }
+
 
 CBoard::CBoard(std::vector<glm::vec2>& points)
 {
 	m_points = points;
-
-	if (m_points.size() > 0)
-	{
-		for (int i = 1; i < m_points.size(); ++i)
-		{
-			m_bands.push_back( CBoardEdge(m_points.at(i - 1), m_points.at(i)) );
-		}
-		m_bands.push_back(CBoardEdge(m_points.at(0), m_points.at(m_points.size() - 1)));
-	}
+	if (points.size() > 0)
+		m_points.push_back(points.at(0));
 }
 
-bool CBoard::checkCollision(const CBall& ball, const glm::vec2& vecV, glm::vec2* p)
+SBoardCollisionDesc CBoard::checkCollision(CBall ball)
 {
-	CLine ballLine = CLine(ball.getPos(), ball.getPos() + vecV);
-	
-	bool isCollided;
-	glm::vec2 collisionPoint;
-	glm::vec2* minCollisionPoint = NULL;
-	float minDist = 0;
+	glm::vec2 p = ball.getPos();
 
-	for (int i = 0; i < m_bands.size(); ++i)
+	float minDist = 0.2;
+
+	for (int i = 1; i < m_points.size(); ++i)
 	{
-		isCollided = m_bands.at(i).line.getIntersectionPoint(ballLine, &collisionPoint);
-		if (isCollided)
-		{
-			float tempDist = glm::distance(ball.getPos(), collisionPoint);
-			if (minCollisionPoint == NULL)
-			{
-				if (tempDist >= 0)
-				{
-					minCollisionPoint = new glm::vec2(collisionPoint);
-					minDist = tempDist;
-				}
-			}
-			else
-			{
-				if (tempDist >= 0 && tempDist < minDist)
-				{
-					delete minCollisionPoint;
-					minCollisionPoint = new glm::vec2(collisionPoint);
-					minDist = tempDist;
-				}
-			}
-		}
-	}
-	
-	if (isCollided)
-	{
-		if (p == NULL)
-			p = new glm::vec2();
-		
-		p->x = minCollisionPoint->x;
-		p->y = minCollisionPoint->y;
+		glm::vec2 a = m_points.at(i - 1);
+		glm::vec2 b = m_points.at(i);
+
+		float distA = glm::distance(a, p);
+		float distB = glm::distance(b, p);
+
+		if (distA < ball.getRadius() * 0.8)
+			return SBoardCollisionDesc(a);
+
+		if (distB < ball.getRadius() * 0.8)
+			return SBoardCollisionDesc(b);
+
+		float distAB = glm::distance(a, b);
+
+		if (distA + distB < distAB * 1.0008)
+			return SBoardCollisionDesc(a, b);
 	}
 
-	if (minCollisionPoint != NULL)
-	{
-		delete minCollisionPoint;
-		minCollisionPoint = NULL;
-	}
-
-	return isCollided;
+	return SBoardCollisionDesc();
 }
+
+SBoardCollisionDesc CBoard::checkCollision(CPadle padle)
+{
+	glm::vec2 p = padle.getPos();
+
+	float minDist = 0.2;
+
+	for (int i = 1; i < m_points.size(); ++i)
+	{
+		glm::vec2 a = m_points.at(i - 1);
+		glm::vec2 b = m_points.at(i);
+
+		float distA = glm::distance(a, p);
+		float distB = glm::distance(b, p);
+
+		if (distA < padle.getWidth() / 2 * 0.8)
+			return SBoardCollisionDesc(a);
+
+		if (distB < padle.getWidth() / 2 * 0.8)
+			return SBoardCollisionDesc(b);
+
+		float distAB = glm::distance(a, b);
+
+		if (distA + distB < distAB * 1.0008)
+			return SBoardCollisionDesc(a, b);
+	}
+
+	return SBoardCollisionDesc();
+}
+

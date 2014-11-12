@@ -6,81 +6,129 @@
 #include <glm\gtc\constants.hpp>
 #include <vector>
 
-class CGameObject
+class CBall
 {
 protected:
-	glm::vec2 pos;
-};
-
-class CBrick : public CGameObject
-{
-protected:
-	GLfloat width;
-	GLfloat height;
-};
-
-class CBall : public CGameObject
-{
-protected:
-	GLfloat m_angle; // 
-	GLfloat m_v;
-	GLfloat m_r;
 	glm::vec2 m_pos;
+	float m_radius;
+	glm::vec2 m_velocity;
 
 public:
 	CBall(glm::vec2 pos = glm::vec2(0.f, 0.f),
-		GLfloat r = 0.015f,
-		GLfloat v = 0.9f,
-		GLfloat angle = 0.f //in deg
-		) : m_angle(angle), m_v(v), m_r(r), m_pos(pos) { };
-	
-	GLfloat getAngle() const { return m_angle; }
-	GLfloat getV() const { return m_v; }
-	GLfloat getR() const { return m_r; }
+		float r = 0.015f,
+		float v = 0.9f) : m_pos(pos), m_radius(r), m_velocity(glm::vec2(-v, v*0.5)) { }
+
 	glm::vec2 getPos() const { return m_pos; }
+	glm::vec2 getVelocity() const { return m_velocity; }
+	float getRadius() const { return m_radius; }
 
-	void setAngle(GLfloat a) { m_angle = a; } // need % 360 deg ( 2 PI )
-	void setV(GLfloat v) { m_v = v; }
-	void setR(GLfloat r) { m_r = r; }
+	float x() const { return m_pos.x; }
+	float y() const { return m_pos.y; }
+	float top() const { return y() + m_radius; }
+	float bottom() const { return y() - m_radius; }
+	float left() const { return x() - m_radius; }
+	float right() const { return x() + m_radius; }
+
 	void setPos(glm::vec2 pos) { m_pos = pos; }
+	void setRadius(float r) { m_radius = r; }
+	void setVelocity(glm::vec2 v) { m_velocity = v; }
 
+	void update(double dt);
 };
 
-/********************************
-			BOARD
-*********************************/
 
-class CLine
+class CRectangle
 {
-	// line: Ax + By + C = 0;
-	// A != 0 or B != 0;
 protected:
-	GLfloat m_a, m_b, m_c;
+	glm::vec2 m_pos;
+	float m_width;
+	float m_height;
 
 public:
-	CLine(GLfloat a, GLfloat b, GLfloat c) : m_a(a), m_b(b), m_c(c) { };
-	CLine(glm::vec2 p1, glm::vec2 p2);
-	bool getIntersectionPoint(const CLine& f, glm::vec2* p); // if point exist returns true;
+	CRectangle(glm::vec2 pos = glm::vec2(0.f, 0.f),
+		float width = 0.2f,
+		float height = 0.05f) : m_pos(pos), m_width(width), m_height(height) { }
+
+	virtual glm::vec2 getPos() const { return m_pos; }
+	virtual float getWidth() const { return m_width; }
+	virtual float getHeight() const { return m_height; }
+	
+	virtual float x() const { return m_pos.x; }
+	virtual float y() const { return m_pos.y; }
+	virtual float top() const { return y() + m_height / 2; }
+	virtual float bottom() const { return y() - m_height / 2; }
+	virtual float left() const { return x() - m_width / 2; }
+	virtual float right() const { return x() + m_width / 2; }
+
+	virtual void setPos(glm::vec2 pos) { m_pos = pos; }
+	virtual bool isIntersecting(const CBall& ball);
 };
 
-struct CBoardEdge
+
+class CBrick : public CRectangle
 {
-	CLine line;
-	glm::vec2 vec;
+protected:
+	bool m_isDestroyed;
+	
+	void destroy() { m_isDestroyed = true; }
 
-	CBoardEdge(glm::vec2 p1, glm::vec2 p2) : line(p1, p2), vec(p2 - p1) { };
+public:
+	CBrick(glm::vec2 pos = glm::vec2(0.f, 0.f),
+		float width = 0.1f,
+		float height = 0.05f) : CRectangle(pos, width, height), m_isDestroyed(false) { }
+	
+	bool isDestroyed() const { return m_isDestroyed; }
+
+	void testCollision(CBall& ball);
 };
+
+
+class CPadle : public CRectangle
+{
+protected:
+	glm::vec2 m_velocity;
+
+public:
+	static const float VELOCITY; // val set in "gameObjects.cpp"
+
+	CPadle(glm::vec2 pos = glm::vec2(0.f, -0.8f),
+		float width = -0.2f,
+		float height = 0.05f) : CRectangle(pos, width, height) { }
+
+	glm::vec2 getVelocity() const { return m_velocity; }
+	void setVelocity(glm::vec2 v) { m_velocity = v; }
+
+	void testCollision(CBall& ball);
+	void update(double dt);
+
+};
+
+
+struct SBoardCollisionDesc
+{
+	//is set: only p1 or p1 and p2
+	glm::vec2* p1;
+	glm::vec2* p2;
+
+	SBoardCollisionDesc() : p1(NULL), p2(NULL) { }
+	SBoardCollisionDesc(glm::vec2 a) : p1(new glm::vec2(a)), p2(NULL) { }
+	SBoardCollisionDesc(glm::vec2 a, glm::vec2 b) : p1(new glm::vec2(a)), p2(new glm::vec2(b)) { }
+	virtual ~SBoardCollisionDesc();
+	bool isCollided() { return p1 != NULL; }
+	void updateBallVelocity(CBall& ball);
+};
+
 
 class CBoard
 {
 protected:
-	std::vector<glm::vec2> m_points;
-	std::vector<CBoardEdge> m_bands;
+	std::vector<glm::vec2> m_points; 
 
 public:
 	CBoard(std::vector<glm::vec2>& points);
-	bool checkCollision(const CBall& ball, const glm::vec2& vecV, glm::vec2* p);
-	std::vector<glm::vec2> getPoints() const { return m_points; };
+	std::vector<glm::vec2> getPoints() const { return m_points; }
+	SBoardCollisionDesc checkCollision(CBall ball);
+	SBoardCollisionDesc checkCollision(CPadle padle);
 };
 
 #endif

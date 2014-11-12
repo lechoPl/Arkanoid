@@ -18,21 +18,29 @@ std::vector<GLfloat> getVertexBufferData(const CGame& game, SObjectsDrawDesc* ob
 			vertexBufferData.push_back(game.getBoard()->getPoints().at(i).x);
 			vertexBufferData.push_back(game.getBoard()->getPoints().at(i).y);
 		}
-		vertexBufferData.push_back(game.getBoard()->getPoints().at(0).x);
-		vertexBufferData.push_back(game.getBoard()->getPoints().at(0).y);
 	}
 	objDrawDesc->boardData = SDrawDesc(offset, vertexBufferData.size() / 2, GL_TRIANGLE_FAN);
 	offset = vertexBufferData.size() / 2;
 
-	GLfloat ballR = game.getBall()->getR();
 	std::vector<GLfloat> ball{
-		-ballR, 0.f,
-		0.f, ballR,
-		0.f, -ballR,
-		ballR, 0.f
+		-game.getBall()->getRadius(), 0.f,
+		0.f, game.getBall()->getRadius(),
+		0.f, -game.getBall()->getRadius(),
+		game.getBall()->getRadius(), 0.f
 	};
 	vertexBufferData.insert(vertexBufferData.end(), ball.begin(), ball.end());
 	objDrawDesc->ballData = SDrawDesc(offset, ball.size() / 2, GL_TRIANGLE_STRIP);
+	offset = vertexBufferData.size() / 2;
+
+	std::vector<GLfloat> rectangle{
+		-1.f, 1.f,
+		1.f, 1.f,
+		-1.f, -1.f,
+		1.f, -1.f
+	};
+	vertexBufferData.insert(vertexBufferData.end(), rectangle.begin(), rectangle.end());
+	objDrawDesc->brickData = SDrawDesc(offset, rectangle.size() / 2, GL_TRIANGLE_STRIP);
+	objDrawDesc->padleData = SDrawDesc(offset, rectangle.size() / 2, GL_TRIANGLE_STRIP);
 	offset = vertexBufferData.size() / 2;
 
 	return vertexBufferData;
