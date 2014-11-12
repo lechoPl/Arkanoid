@@ -16,8 +16,8 @@ protected:
 public:
 	CBall(glm::vec2 pos = glm::vec2(0.f, 0.f),
 		float r = 0.015f,
-		float v = 0.9f) : m_pos(pos), m_radius(r), m_velocity(glm::vec2(-v, v*0.5)) { }
-
+		float v = 0.6f,
+		float startAngle = 180.f);
 	glm::vec2 getPos() const { return m_pos; }
 	glm::vec2 getVelocity() const { return m_velocity; }
 	float getRadius() const { return m_radius; }
@@ -92,7 +92,7 @@ public:
 	static const float VELOCITY; // val set in "gameObjects.cpp"
 
 	CPadle(glm::vec2 pos = glm::vec2(0.f, -0.8f),
-		float width = -0.2f,
+		float width = 0.2f,
 		float height = 0.05f) : CRectangle(pos, width, height) { }
 
 	glm::vec2 getVelocity() const { return m_velocity; }
@@ -122,13 +122,17 @@ struct SBoardCollisionDesc
 class CBoard
 {
 protected:
-	std::vector<glm::vec2> m_points; 
+	std::vector<glm::vec2> m_points;
+	glm::vec2 m_A;
+	glm::vec2 m_B;
+	SBoardCollisionDesc checkCollision(glm::vec2 q, glm::vec2 s, glm::vec2 p, glm::vec2 r);
 
 public:
-	CBoard(std::vector<glm::vec2>& points);
+	CBoard(std::vector<glm::vec2>& points, glm::vec2 A, glm::vec2 B);
 	std::vector<glm::vec2> getPoints() const { return m_points; }
-	SBoardCollisionDesc checkCollision(CBall ball);
-	SBoardCollisionDesc checkCollision(CPadle padle);
+	SBoardCollisionDesc checkLostLive(CBall ball, double dt);
+	SBoardCollisionDesc checkCollision(CBall ball, double dt);
+	SBoardCollisionDesc checkCollision(CPadle padle, double dt);
 };
 
 #endif

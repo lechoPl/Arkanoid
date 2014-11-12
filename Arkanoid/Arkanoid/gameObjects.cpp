@@ -1,6 +1,17 @@
 #include "gameObjects.h"
 
-const float CPadle::VELOCITY = 0.6f;
+#include <glm/gtx/rotate_vector.hpp>
+
+const float CPadle::VELOCITY = 0.7f;
+
+CBall::CBall(glm::vec2 pos,
+	float r,
+	float v,
+	float startAngle) : m_pos(pos), m_radius(r)
+{
+	m_velocity = glm::rotate(glm::vec2(0, v), startAngle);
+}
+
 
 void CBall::update(double dt)
 {
@@ -8,12 +19,6 @@ void CBall::update(double dt)
 	currentV *= dt;
 
 	setPos(m_pos + currentV);
-
-	if (left() < -1.0f && m_velocity.x < 0) m_velocity.x *= -1;
-	if (right() > 1.0f  && m_velocity.x > 0) m_velocity.x *= -1;
-
-	if (top() > 1.0f && m_velocity.y > 0) m_velocity.y *= -1;
-	if (bottom() < -1.0f && m_velocity.y < 0) m_velocity.y *= -1;
 }
 
 bool CRectangle::isIntersecting(const CBall& ball)
@@ -75,13 +80,19 @@ void CPadle::testCollision(CBall& ball)
 		v.x = fromLeft ? -abs(v.x) : abs(v.x);
 	else if (fromTop)
 	{
-		if (abs(minOverlapY) < m_width * 0.2)
+		float padlePart = 0.3;
+		if (abs(minOverlapX) < m_width * padlePart)
 		{
-			float tempY = abs(v.y);
-			float temp = minOverlapY / m_width * 0.2;
-			float diff = tempY - tempY * temp;
-			v.y = tempY * temp;
-			v.x = v.x < 0 ? v.x - diff : v.x + diff;
+			float temp = minOverlapX / (m_width * padlePart);
+
+			const float maxAngle = 70;
+			float angle = maxAngle - maxAngle * temp;
+			
+			if (abs(overlapRight) < abs(overlapLeft))
+				angle = -angle;
+
+			v = glm::vec2(v.x, abs(v.y));
+			v = glm::rotate(v, angle);
 		}
 		else
 			v.y = abs(v.y);
@@ -140,68 +151,125 @@ void SBoardCollisionDesc::updateBallVelocity(CBall& ball)
 }
 
 
-CBoard::CBoard(std::vector<glm::vec2>& points)
+CBoard::CBoard(std::vector<glm::vec2>& points, glm::vec2 A, glm::vec2 B)
 {
 	m_points = points;
 	if (points.size() > 0)
 		m_points.push_back(points.at(0));
+
+	m_A = A;
+	m_B = B;
 }
 
-SBoardCollisionDesc CBoard::checkCollision(CBall ball)
+float cross(glm::vec2 v, glm::vec2 w)
 {
-	glm::vec2 p = ball.getPos();
+	return v.x * w.y - v.y * w.x;
+}
 
-	float minDist = 0.2;
+SBoardCollisionDesc CBoard::checkCollision(glm::vec2 q, glm::vec2 s, glm::vec2 p, glm::vec2 r)
+{
+	float t = cross((q - p), s) / cross(r, s);
+	float u = cross((q - p), r) / cross(r, s);
 
-	for (int i = 1; i < m_points.size(); ++i)
+	if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
 	{
-		glm::vec2 a = m_points.at(i - 1);
-		glm::vec2 b = m_points.at(i);
+		return SBoardCollisionDesc(p, p + r);
+	}
+	
+	return SBoardCollisionDesc();
+}
 
-		float distA = glm::distance(a, p);
-		float distB = glm::distance(b, p);
 
-		if (distA < ball.getRadius() * 0.8)
-			return SBoardCollisionDesc(a);
+SBoardCollisionDesc CBoard::checkLostLive(CBall ball, double dt)
+{
+	glm::vec2 q = ball.getPos();
+	glm::vec2 s = ball.getVelocity();
+	s *= dt;
 
-		if (distB < ball.getRadius() * 0.8)
-			return SBoardCollisionDesc(b);
+	glm::vec2 p = m_A;
+	glm::vec2 r = m_B - p;
 
-		float distAB = glm::distance(a, b);
+	//SBoardCollisionDesc temp = checkCollision(q, s, p, r);
+	//return temp;
 
-		if (distA + distB < distAB * 1.0008)
-			return SBoardCollisionDesc(a, b);
+	float t = cross((q - p), s) / cross(r, s);
+	float u = cross((q - p), r) / cross(r, s);
+
+	if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
+	{
+		return SBoardCollisionDesc(p, p + r);
 	}
 
 	return SBoardCollisionDesc();
 }
 
-SBoardCollisionDesc CBoard::checkCollision(CPadle padle)
+SBoardCollisionDesc CBoard::checkCollision(CBall ball, double dt)
 {
-	glm::vec2 p = padle.getPos();
-
-	float minDist = 0.2;
+	glm::vec2 q = ball.getPos();
+	glm::vec2 s = ball.getVelocity();
+	s *= dt;
 
 	for (int i = 1; i < m_points.size(); ++i)
 	{
-		glm::vec2 a = m_points.at(i - 1);
-		glm::vec2 b = m_points.at(i);
+		glm::vec2 p = m_points.at(i - 1);
+		glm::vec2 r = m_points.at(i) - p;
 
-		float distA = glm::distance(a, p);
-		float distB = glm::distance(b, p);
+		/*SBoardCollisionDesc temp = checkCollision(q, s, p, r);
+		if (temp.isCollided())
+			return temp;*/
 
-		if (distA < padle.getWidth() / 2 * 0.8)
-			return SBoardCollisionDesc(a);
+		float t = cross((q - p), s) / cross(r, s);
+		float u = cross((q - p), r) / cross(r, s);
 
-		if (distB < padle.getWidth() / 2 * 0.8)
-			return SBoardCollisionDesc(b);
-
-		float distAB = glm::distance(a, b);
-
-		if (distA + distB < distAB * 1.0008)
-			return SBoardCollisionDesc(a, b);
+		if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
+		{
+			return SBoardCollisionDesc(p, p + r);
+		}
 	}
 
+	//no collision
+	return SBoardCollisionDesc();
+}
+
+SBoardCollisionDesc CBoard::checkCollision(CPadle padle, double dt)
+{
+	glm::vec2 q = padle.getPos();
+	glm::vec2 s = padle.getVelocity();
+	s *= dt;
+
+	//right
+	q.x = padle.right();
+	for (int i = 1; i < m_points.size(); ++i)
+	{
+		glm::vec2 p = m_points.at(i - 1);
+		glm::vec2 r = m_points.at(i) - p;
+		
+		float t = cross((q - p), s) / cross(r, s);
+		float u = cross((q - p), r) / cross(r, s);
+
+		if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
+		{
+			return SBoardCollisionDesc(p, p + r);
+		}
+	}
+
+	//left
+	q.x = padle.left();
+	for (int i = 1; i < m_points.size(); ++i)
+	{
+		glm::vec2 p = m_points.at(i - 1);
+		glm::vec2 r = m_points.at(i) - p;
+		
+		float t = cross((q - p), s) / cross(r, s);
+		float u = cross((q - p), r) / cross(r, s);
+
+		if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
+		{
+			return SBoardCollisionDesc(p, p + r);
+		}
+	}
+
+	//no collision
 	return SBoardCollisionDesc();
 }
 

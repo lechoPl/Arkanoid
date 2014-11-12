@@ -35,6 +35,9 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 		game.setMovePadleLeft(true);
 	if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE)
 		game.setMovePadleLeft(false);
+
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+		game.start();
 }
 
 int main(void)
@@ -115,18 +118,37 @@ int main(void)
 			(void*)0            // array buffer offset
 		);
 
-		glUniform3f(ColorID, 0.3f, 0.3f, 0.3f);
+		//draw bg
+		glUniform3f(ColorID, 0.2f, 0.2f, 0.2f);
 		glUniform2f(PositionID, 0.f, 0.f);
 		glUniform2f(ScaleID, 1.f, 1.f);
 		objectsData.boardData.draw();
 
+		float bgScale = 0.1f;
+		float bgTemp = 3 * bgScale;
+		glUniform3f(ColorID, 0.0f, 0.f, 0.f);
+		glUniform2f(ScaleID, bgScale, bgScale);
+		for (int i = 0; i <= 2.0/bgScale; ++i)
+		{
+			for (int j = 0; j <= 2.0/(2 * bgScale); ++j)
+			{
+				if (i % 2 == 0)
+					glUniform2f(PositionID, -1.f + bgTemp * j, 1.f - bgScale * i);
+				else
+					glUniform2f(PositionID, -1.f + bgTemp/2 + bgTemp * j, 1.f - bgScale * i);
+
+				objectsData.bgData.draw();
+			}
+		}
+		
+		//draw bricks
+		glUniform3f(ColorID, 0.8f, 0.8f, 0.f);
 		for (int i = 0; i < game.getBricks().size(); ++i)
 		{
 			const CBrick& tempBrick = game.getBricks().at(i);
 			if (tempBrick.isDestroyed())
 				continue;
 
-			glUniform3f(ColorID, 0.f, 1.f, 0.f);
 			glUniform2f(PositionID, tempBrick.getPos().x, tempBrick.getPos().y);
 			glUniform2f(ScaleID, tempBrick.getWidth() / 2, tempBrick.getHeight() / 2);
 			objectsData.brickData.draw();
@@ -138,10 +160,17 @@ int main(void)
 		glUniform2f(ScaleID, game.getPadle().getWidth() / 2, game.getPadle().getHeight() / 2);
 		objectsData.padleData.draw();
 
+		//draw ball
 		glUniform3f(ColorID, 1.f, 0.f, 0.f);
 		glUniform2f(PositionID, game.getBall()->getPos().x, game.getBall()->getPos().y);
 		glUniform2f(ScaleID, 1.f, 1.f);
 		objectsData.ballData.draw();
+
+		//hide object over board
+		glUniform3f(ColorID, 0.f, 0.f, 0.f);
+		glUniform2f(PositionID, 0.f, 0.f);
+		glUniform2f(ScaleID, 1.f, 1.f);
+		objectsData.firstPlan.draw();
 
 		glDisableVertexAttribArray(0);
 

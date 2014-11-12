@@ -25,6 +25,8 @@ struct SObjectsDrawDesc
 	SDrawDesc brickData;
 	SDrawDesc ballData;
 	SDrawDesc padleData;
+	SDrawDesc bgData;
+	SDrawDesc firstPlan;
 };
 
 std::vector<GLfloat> getVertexBufferData(const CGame& board, SObjectsDrawDesc* objDrawDesc);

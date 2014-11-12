@@ -3,9 +3,21 @@
 
 #include "gameObjects.h"
 
+enum GAMESTATE
+{
+	GS_STARTGAME,
+	GS_MOVE,
+	GS_WON,
+	GS_LOSE,
+	GS_LOSTLIVE
+};
+
 class CGame
 {
 protected:
+	unsigned m_playerLives = 3;
+	GAMESTATE m_gameState;
+
 	CBall m_ball;
 	CBoard* m_board;
 	std::vector<CBrick> m_bricks;
@@ -26,6 +38,8 @@ public:
 
 	void setMovePadleRight(bool v) { m_movePadleRight = v; }
 	void setMovePadleLeft(bool v) { m_movePadleLeft = v; }
+
+	void start();
 };
 
 #endif
