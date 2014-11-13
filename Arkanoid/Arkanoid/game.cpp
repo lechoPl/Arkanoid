@@ -19,9 +19,13 @@ CGame::CGame()
 	m_board = new CBoard(boardPoints, A, B);
 	
 	//brick size 0.2 x 0.05
-	for (float y = 0.7; y > 0.2; y -= 0.055)
+	CBrick tempBrick;
+	float brickWidth = tempBrick.getWidth();
+	float brickHeight = tempBrick.getHeight();
+
+	for (float y = 0.7f; y > 0.2; y -= (brickHeight + 0.005f))
 	{
-		for (float x = -0.475; x < 0.5; x += 0.105)
+		for (float x = -0.5f; x < 0.5f; x += brickWidth + 0.005f)
 		{
 			m_bricks.push_back(CBrick(glm::vec2(x, y)));
 		}

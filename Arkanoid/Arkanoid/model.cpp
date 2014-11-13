@@ -56,6 +56,7 @@ std::vector<GLfloat> getVertexBufferData(const CGame& game, SObjectsDrawDesc* ob
 	objDrawDesc->bgData = SDrawDesc(offset, bg.size() / 2, GL_LINE_STRIP);
 	offset = vertexBufferData.size() / 2;
 
+	//triangles used to hide unnecessary objects
 	std::vector<GLfloat> firstPlan{
 		-1.f, 1.f,
 		-0.5f, 1.f,

@@ -7,7 +7,7 @@ const float CPadle::VELOCITY = 0.7f;
 CBall::CBall(glm::vec2 pos,
 	float r,
 	float v,
-	float startAngle) : m_pos(pos), m_radius(r)
+	float startAngle) : CGameObject(pos), m_radius(r)
 {
 	m_velocity = glm::rotate(glm::vec2(0, v), startAngle);
 }
@@ -166,21 +166,7 @@ float cross(glm::vec2 v, glm::vec2 w)
 	return v.x * w.y - v.y * w.x;
 }
 
-SBoardCollisionDesc CBoard::checkCollision(glm::vec2 q, glm::vec2 s, glm::vec2 p, glm::vec2 r)
-{
-	float t = cross((q - p), s) / cross(r, s);
-	float u = cross((q - p), r) / cross(r, s);
-
-	if (u >= 0 && u <= 1 && t >= 0 && t <= 1)
-	{
-		return SBoardCollisionDesc(p, p + r);
-	}
-	
-	return SBoardCollisionDesc();
-}
-
-
-SBoardCollisionDesc CBoard::checkLostLive(CBall ball, double dt)
+SBoardCollisionDesc CBoard::checkLostLive(CBall& ball, double dt)
 {
 	glm::vec2 q = ball.getPos();
 	glm::vec2 s = ball.getVelocity();
@@ -189,9 +175,6 @@ SBoardCollisionDesc CBoard::checkLostLive(CBall ball, double dt)
 	glm::vec2 p = m_A;
 	glm::vec2 r = m_B - p;
 
-	//SBoardCollisionDesc temp = checkCollision(q, s, p, r);
-	//return temp;
-
 	float t = cross((q - p), s) / cross(r, s);
 	float u = cross((q - p), r) / cross(r, s);
 
@@ -203,7 +186,7 @@ SBoardCollisionDesc CBoard::checkLostLive(CBall ball, double dt)
 	return SBoardCollisionDesc();
 }
 
-SBoardCollisionDesc CBoard::checkCollision(CBall ball, double dt)
+SBoardCollisionDesc CBoard::checkCollision(CBall& ball, double dt)
 {
 	glm::vec2 q = ball.getPos();
 	glm::vec2 s = ball.getVelocity();
@@ -213,10 +196,6 @@ SBoardCollisionDesc CBoard::checkCollision(CBall ball, double dt)
 	{
 		glm::vec2 p = m_points.at(i - 1);
 		glm::vec2 r = m_points.at(i) - p;
-
-		/*SBoardCollisionDesc temp = checkCollision(q, s, p, r);
-		if (temp.isCollided())
-			return temp;*/
 
 		float t = cross((q - p), s) / cross(r, s);
 		float u = cross((q - p), r) / cross(r, s);
@@ -231,7 +210,7 @@ SBoardCollisionDesc CBoard::checkCollision(CBall ball, double dt)
 	return SBoardCollisionDesc();
 }
 
-SBoardCollisionDesc CBoard::checkCollision(CPadle padle, double dt)
+SBoardCollisionDesc CBoard::checkCollision(CPadle& padle, double dt)
 {
 	glm::vec2 q = padle.getPos();
 	glm::vec2 s = padle.getVelocity();
